@@ -1,7 +1,9 @@
 package main
 
+import "github.com/ZootHii/todo-golang-backend/src/controllers"
+
 func main() {
-	a := App{}
+	a := controllers.App{}
 	a.Initialize(
 		"root",
 		"1234",

@@ -3,8 +3,6 @@ package main_test
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/ZootHii/todo-golang-backend/src"
-	"github.com/ZootHii/todo-golang-backend/src/models"
 	"log"
 	"math/rand"
 	"net/http"
@@ -12,12 +10,15 @@ import (
 	"os"
 	"strconv"
 	"testing"
+
+	"github.com/ZootHii/todo-golang-backend/src/controllers"
+	"github.com/ZootHii/todo-golang-backend/src/models"
 )
 
-var a main.App
+var a controllers.App
 
 func TestMain(m *testing.M) {
-	a = main.App{}
+	a = controllers.App{}
 	a.Initialize(
 		"root",
 		"1234",
@@ -110,7 +111,7 @@ func TestGetNonExistentTodo(t *testing.T) {
 	}
 
 	if rm.Message != "Todo not found" {
-		t.Errorf("Expected : message to be 'Todo not found'\nGot : '%s'", rm.Message)
+		t.Errorf("Expected : message to be Todo not found\nGot : '%s'", rm.Message)
 	}
 
 	/*var m map[string]string

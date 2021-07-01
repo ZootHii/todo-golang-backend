@@ -2,7 +2,6 @@ package models
 
 import (
 	"database/sql"
-	"sort"
 )
 
 type Todo struct {
@@ -12,28 +11,21 @@ type Todo struct {
 }
 
 func (t *Todo) GetTodo(db *sql.DB) error {
-	return db.QueryRow("SELECT what_todo, created_at FROM todos WHERE id=$1",
-		t.ID).Scan(&t.WhatTodo, &t.CreatedAt)
+	return db.QueryRow("SELECT what_todo, created_at FROM todos WHERE id=$1", t.ID).Scan(&t.WhatTodo, &t.CreatedAt)
 }
 
 func (t *Todo) UpdateTodo(db *sql.DB) error {
-	_, err :=
-		db.Exec("UPDATE todos SET what_todo=$1 WHERE id=$2",
-			t.WhatTodo, t.ID)
-
+	_, err := db.Exec("UPDATE todos SET what_todo=$1 WHERE id=$2", t.WhatTodo, t.ID)
 	return err
 }
 
 func (t *Todo) DeleteTodo(db *sql.DB) error {
 	_, err := db.Exec("DELETE FROM todos WHERE id=$1", t.ID)
-
 	return err
 }
 
 func (t *Todo) CreateTodo(db *sql.DB) error {
-	err := db.QueryRow(
-		"INSERT INTO todos(what_todo) VALUES($1) RETURNING id",
-		t.WhatTodo).Scan(&t.ID)
+	err := db.QueryRow("INSERT INTO todos(what_todo) VALUES($1) RETURNING id", t.WhatTodo).Scan(&t.ID)
 
 	if err != nil {
 		return err
@@ -47,7 +39,7 @@ func GetTodos(db *sql.DB /*, start, count int*/) ([]Todo, error) {
 	"SELECT id, what_todo, created_at FROM todos LIMIT $1 OFFSET $2",
 	count, start)*/
 
-	rows, err := db.Query("SELECT id, what_todo, created_at FROM todos")
+	rows, err := db.Query("SELECT id, what_todo, created_at FROM todos ORDER BY created_at DESC")
 
 	if err != nil {
 		return nil, err
@@ -64,10 +56,10 @@ func GetTodos(db *sql.DB /*, start, count int*/) ([]Todo, error) {
 		}
 		todos = append(todos, t)
 
-		// sort starting from latest created
+		/*// sort starting from latest created // moved to query
 		sort.Slice(todos, func(i, j int) bool {
 			return todos[i].CreatedAt > todos[j].CreatedAt
-		})
+		})*/
 	}
 
 	return todos, nil
