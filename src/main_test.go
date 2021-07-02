@@ -13,6 +13,7 @@ import (
 
 	"github.com/ZootHii/todo-golang-backend/src/controllers"
 	"github.com/ZootHii/todo-golang-backend/src/models"
+	"github.com/stretchr/testify/require"
 )
 
 var a controllers.App
@@ -77,42 +78,50 @@ func DeleteAndRestartTable() {
 func TestEmptyTable(t *testing.T) {
 	DeleteAndRestartTable()
 
-	req, _ := http.NewRequest("GET", "/todos", nil)
+	req, _ := http.NewRequest("GET", "/api/todos", nil)
 	response := ExecuteRequest(req)
 
-	CheckResponseCode(t, http.StatusOK, response.Code)
-
+	//CheckResponseCode(t, http.StatusOK, response.Code)
+	require.Equal(t, http.StatusOK, response.Code)
 	body := response.Body.String()
 	//var data map[string]interface{}
 
 	drm := &models.DataResponseModel{}
 	err := json.Unmarshal([]byte(body), &drm)
-	if err != nil {
+
+	require.NoError(t, err)
+	require.Empty(t, drm.Data)
+
+	/*if err != nil {
 		panic(err)
 	}
 
 	if len(drm.Data) != 0 {
 		t.Errorf("Expected : 0\nGot : %d", len(drm.Data))
-	}
+	}*/
 }
 
 func TestGetNonExistentTodo(t *testing.T) {
 	DeleteAndRestartTable()
 
-	req, _ := http.NewRequest("GET", "/todos/11", nil)
+	req, _ := http.NewRequest("GET", "/api/todos/11", nil)
 	response := ExecuteRequest(req)
 
-	CheckResponseCode(t, http.StatusNotFound, response.Code)
+	//CheckResponseCode(t, http.StatusNotFound, response.Code)
+	require.Equal(t, http.StatusNotFound, response.Code)
 
 	rm := &models.ResponseModel{}
 	err := json.Unmarshal([]byte(response.Body.Bytes()), rm)
-	if err != nil {
-		log.Fatal(err)
-	}
 
-	if rm.Message != "Todo not found" {
+	require.NoError(t, err)
+	/*if err != nil {
+		log.Fatal(err)
+	}*/
+
+	require.Equal(t, "Todo not found", rm.Message)
+	/*if rm.Message != "Todo not found" {
 		t.Errorf("Expected : message to be Todo not found\nGot : '%s'", rm.Message)
-	}
+	}*/
 
 	/*var m map[string]string
 	json.Unmarshal(response.Body.Bytes(), &m)
@@ -126,45 +135,57 @@ func TestCreateTodo(t *testing.T) {
 	DeleteAndRestartTable()
 
 	var jsonStr = []byte(`{"what_todo":"test todo"}`)
-	req, _ := http.NewRequest("POST", "/todo", bytes.NewBuffer(jsonStr))
+	req, _ := http.NewRequest("POST", "/api/todo", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
 	response := ExecuteRequest(req)
-	CheckResponseCode(t, http.StatusCreated, response.Code)
+	//CheckResponseCode(t, http.StatusCreated, response.Code)
+	require.Equal(t, http.StatusCreated, response.Code)
 
 	sdrm := &models.SignleDataResponseModel{}
 	err := json.Unmarshal([]byte(response.Body.Bytes()), sdrm)
-	if err != nil {
+
+	require.NoError(t, err)
+
+	/*if err != nil {
 		log.Fatal(err)
-	}
+	}*/
 
-	if sdrm.Data.WhatTodo != "test todo" {
+	require.Equal(t, "test todo", sdrm.Data.WhatTodo)
+	require.Equal(t, 1, sdrm.Data.ID)
+
+	/*if sdrm.Data.WhatTodo != "test todo" {
 		t.Errorf("Expected : what_todo to be 'test todo'\nGot : '%v'", sdrm.Data.WhatTodo)
-	}
+	}*/
 
-	if sdrm.Data.ID != 1.0 {
+	/*if sdrm.Data.ID != 1.0 {
 		t.Errorf("Expected : id to be '1'\nGot : '%v'", sdrm.Data.ID)
-	}
+	}*/
 }
 
 func TestGetTodo(t *testing.T) {
 	DeleteAndRestartTable()
 	AddTodos(1)
 
-	req, _ := http.NewRequest("GET", "/todos/1", nil)
+	req, _ := http.NewRequest("GET", "/api/todos/1", nil)
 	response := ExecuteRequest(req)
+
+	//CheckResponseCode(t, http.StatusOK, response.Code)
+
+	require.Equal(t, http.StatusOK, response.Code)
 
 	sdrm := &models.SignleDataResponseModel{}
 	err := json.Unmarshal([]byte(response.Body.Bytes()), sdrm)
-	if err != nil {
+
+	require.NoError(t, err)
+	/*if err != nil {
 		log.Fatal(err)
-	}
+	}*/
 
-	if sdrm.Data.ID != 1.0 {
+	require.Equal(t, 1, sdrm.Data.ID)
+	/*if sdrm.Data.ID != 1.0 {
 		t.Errorf("Expected : id to be '1'\nGot : '%v'", sdrm.Data.ID)
-	}
-
-	CheckResponseCode(t, http.StatusOK, response.Code)
+	}*/
 
 }
 
@@ -173,7 +194,7 @@ func TestUpdateTodo(t *testing.T) {
 	DeleteAndRestartTable()
 	AddTodos(1)
 
-	req, _ := http.NewRequest("GET", "/todos/1", nil)
+	req, _ := http.NewRequest("GET", "/api/todos/1", nil)
 	response := ExecuteRequest(req)
 	//var originalTodo map[string]interface{}
 
@@ -181,40 +202,49 @@ func TestUpdateTodo(t *testing.T) {
 	json.Unmarshal(response.Body.Bytes(), &originalSdrm)
 
 	var jsonStr = []byte(`{"what_todo":"test todo - updated what_todo"}`)
-	req, _ = http.NewRequest("PUT", "/todos/1", bytes.NewBuffer(jsonStr))
+	req, _ = http.NewRequest("PUT", "/api/todos/1", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
 	response = ExecuteRequest(req)
 
-	CheckResponseCode(t, http.StatusOK, response.Code)
+	//CheckResponseCode(t, http.StatusOK, response.Code)
+
+	require.Equal(t, http.StatusOK, response.Code)
 
 	//var m map[string]interface{}
 	sdrm := &models.SignleDataResponseModel{}
-	json.Unmarshal(response.Body.Bytes(), &sdrm)
+	//json.Unmarshal(response.Body.Bytes(), &sdrm)
+	err := json.Unmarshal([]byte(response.Body.Bytes()), sdrm)
 
-	if sdrm.Data.ID != originalSdrm.Data.ID {
+	require.NoError(t, err)
+	require.Equal(t, originalSdrm.Data.ID, sdrm.Data.ID)
+	require.NotEqual(t, originalSdrm.Data.WhatTodo, sdrm.Data.WhatTodo)
+
+	/*if sdrm.Data.ID != originalSdrm.Data.ID {
 		t.Errorf("Expected : id to remain the same (%v)\nGot : %v", originalSdrm.Data.ID, sdrm.Data.ID)
 	}
 
 	if sdrm.Data.WhatTodo == originalSdrm.Data.WhatTodo {
 		t.Errorf("Expected : what_todo to change from '%v' to '%v'\nGot : '%v'", originalSdrm.Data.WhatTodo, sdrm.Data.WhatTodo, sdrm.Data.WhatTodo)
-	}
+	}*/
 }
 
 func TestDeleteTodo(t *testing.T) {
 	DeleteAndRestartTable()
 	AddTodos(1)
 
-	req, _ := http.NewRequest("GET", "/todos/1", nil)
+	req, _ := http.NewRequest("GET", "/api/todos/1", nil)
 	response := ExecuteRequest(req)
-	CheckResponseCode(t, http.StatusOK, response.Code)
+	//CheckResponseCode(t, http.StatusOK, response.Code)
+	require.Equal(t, http.StatusOK, response.Code)
 
-	req, _ = http.NewRequest("DELETE", "/todos/1", nil)
+	req, _ = http.NewRequest("DELETE", "/api/todos/1", nil)
 	response = ExecuteRequest(req)
 
-	CheckResponseCode(t, http.StatusOK, response.Code)
-
-	req, _ = http.NewRequest("GET", "/todos/1", nil)
+	//CheckResponseCode(t, http.StatusOK, response.Code)
+	require.Equal(t, http.StatusOK, response.Code)
+	req, _ = http.NewRequest("GET", "/api/todos/1", nil)
 	response = ExecuteRequest(req)
-	CheckResponseCode(t, http.StatusNotFound, response.Code)
+	//CheckResponseCode(t, http.StatusNotFound, response.Code)
+	require.Equal(t, http.StatusNotFound, response.Code)
 }
