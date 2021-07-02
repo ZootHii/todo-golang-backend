@@ -55,11 +55,6 @@ func GetTodos(db *sql.DB /*, start, count int*/) ([]Todo, error) {
 			return nil, err
 		}
 		todos = append(todos, t)
-
-		/*// sort starting from latest created // moved to query
-		sort.Slice(todos, func(i, j int) bool {
-			return todos[i].CreatedAt > todos[j].CreatedAt
-		})*/
 	}
 
 	return todos, nil

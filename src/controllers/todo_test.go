@@ -22,73 +22,72 @@ func ExecuteRequest(req *http.Request) *httptest.ResponseRecorder {
 	return rr
 }
 
-func createRandomTodo(t *testing.T) (models.SignleDataResponseModel, int, string, error) {
+func createRandomTodo(t *testing.T) (models.SignleDataResponseModel, int, string) {
 	rand.Seed(time.Now().UnixNano())
 	randomWhatTodo := ("Todo " + strconv.Itoa(rand.Int()))
 	testPostTodo := &models.Todo{WhatTodo: randomWhatTodo}
 
-	jsonStr, _ := json.Marshal(testPostTodo)
-	req, _ := http.NewRequest("POST", "/api/todo", bytes.NewBuffer(jsonStr))
+	jsonStr, errMarshal := json.Marshal(testPostTodo)
+	req, errRequest := http.NewRequest("POST", "/api/todo", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
 	response := ExecuteRequest(req)
 	sdrm := &models.SignleDataResponseModel{}
-	err := json.Unmarshal([]byte(response.Body.Bytes()), sdrm)
+	errUnmarshal := json.Unmarshal([]byte(response.Body.Bytes()), sdrm)
 
-	return *sdrm, response.Code, randomWhatTodo, err
+	require.NoError(t, errMarshal)
+	require.NoError(t, errRequest)
+	require.NoError(t, errUnmarshal)
 
-	//a.DB.Exec("INSERT INTO todos(what_todo) VALUES($1)", "Todo "+strconv.Itoa(rand.Intn(1000)*( /*i+*/ 1)))
+	return *sdrm, response.Code, randomWhatTodo
 }
 
 func TestGetTodos(t *testing.T) {
 	DeleteAndRestartTable()
 
-	req, _ := http.NewRequest("GET", "/api/todos", nil)
+	for i := 0; i < 10; i++ {
+		createRandomTodo(t)
+	}
+
+	req, errRequest := http.NewRequest("GET", "/api/todos", nil)
 	response := ExecuteRequest(req)
 
 	require.Equal(t, http.StatusOK, response.Code)
 
 	drm := &models.DataResponseModel{}
-	err := json.Unmarshal([]byte(response.Body.Bytes()), &drm)
+	errUnmarshal := json.Unmarshal([]byte(response.Body.Bytes()), &drm)
 
-	require.NoError(t, err)
-	require.Empty(t, drm.Data)
+	require.NoError(t, errRequest)
+	require.NoError(t, errUnmarshal)
+	require.NotEmpty(t, drm.Data)
+	require.Len(t, drm.Data, 10)
+	for _, todo := range drm.Data {
+		require.NotEmpty(t, todo)
+	}
 }
 
 func TestGetNonExistentTodo(t *testing.T) {
 	DeleteAndRestartTable()
 
-	req, _ := http.NewRequest("GET", "/api/todos/11", nil)
+	req, errRequest := http.NewRequest("GET", "/api/todos/11", nil)
 	response := ExecuteRequest(req)
 
 	require.Equal(t, http.StatusNotFound, response.Code)
 
 	rm := &models.ResponseModel{}
-	err := json.Unmarshal([]byte(response.Body.Bytes()), rm)
+	errUnmarshal := json.Unmarshal([]byte(response.Body.Bytes()), rm)
 
-	require.NoError(t, err)
+	require.NoError(t, errRequest)
+	require.NoError(t, errUnmarshal)
 	require.Equal(t, "Todo not found", rm.Message)
 
 }
 
 func TestCreateTodo(t *testing.T) {
 	DeleteAndRestartTable()
-	randomTodo, responseCode, randomWhatTodo, errR := createRandomTodo(t)
-
-	/*var jsonStr = []byte(`{"what_todo":"test todo"}`)
-	req, _ := http.NewRequest("POST", "/api/todo", bytes.NewBuffer(jsonStr))
-	req.Header.Set("Content-Type", "application/json")
-
-	response := ExecuteRequest(req)*/
-
-	//require.Equal(t, http.StatusCreated, response.Code)
+	randomTodo, responseCode, randomWhatTodo := createRandomTodo(t)
 
 	require.Equal(t, http.StatusCreated, responseCode)
-
-	//sdrm := &models.SignleDataResponseModel{}
-	//err := json.Unmarshal([]byte(response.Body.Bytes()), sdrm)
-
-	require.NoError(t, errR)
 	require.Equal(t, randomWhatTodo, randomTodo.Data.WhatTodo)
 	require.Equal(t, 1, randomTodo.Data.ID)
 	require.NotZero(t, randomTodo.Data.CreatedAt)
@@ -97,66 +96,58 @@ func TestCreateTodo(t *testing.T) {
 
 func TestGetTodo(t *testing.T) {
 	DeleteAndRestartTable()
-	randomTodo, _, _, _ := createRandomTodo(t)
+	randomTodo, _, _ := createRandomTodo(t)
 
-	//require.Equal(t, http.StatusOK, returnTodo.Data)
-	req, _ := http.NewRequest("GET", "/api/todos/"+strconv.Itoa(randomTodo.Data.ID), nil)
+	req, errRequest := http.NewRequest("GET", "/api/todos/"+strconv.Itoa(randomTodo.Data.ID), nil)
 	response := ExecuteRequest(req)
+	sdrm := &models.SignleDataResponseModel{}
+	errUnmarshal := json.Unmarshal([]byte(response.Body.Bytes()), sdrm)
 
 	require.Equal(t, http.StatusOK, response.Code)
-
-	sdrm := &models.SignleDataResponseModel{}
-	err := json.Unmarshal([]byte(response.Body.Bytes()), sdrm)
-
-	require.NoError(t, err)
+	require.NotEmpty(t, sdrm.Data)
+	require.NoError(t, errRequest)
+	require.NoError(t, errUnmarshal)
 	require.Equal(t, randomTodo.Data.ID, sdrm.Data.ID)
-	require.Equal(t, randomTodo.Data, sdrm.Data)
+	require.Equal(t, randomTodo.Data.WhatTodo, sdrm.Data.WhatTodo)
+	require.Equal(t, randomTodo.Data.CreatedAt, sdrm.Data.CreatedAt)
 
 }
 
 func TestUpdateTodo(t *testing.T) {
 	DeleteAndRestartTable()
-	randomTodo, _, _, _ := createRandomTodo(t)
-
-	req, _ := http.NewRequest("GET", "/api/todos/"+strconv.Itoa(randomTodo.Data.ID), nil)
-	response := ExecuteRequest(req)
-
-	originalSdrm := &models.SignleDataResponseModel{}
-	json.Unmarshal(response.Body.Bytes(), &originalSdrm)
+	randomTodo, _, _ := createRandomTodo(t)
 
 	var jsonStr = []byte(`{"what_todo":"test todo - updated what_todo"}`)
-	req, _ = http.NewRequest("PUT", "/api/todos/1", bytes.NewBuffer(jsonStr))
+	req, errRequest := http.NewRequest("PUT", "/api/todos/"+strconv.Itoa(randomTodo.Data.ID), bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
-
-	response = ExecuteRequest(req)
+	response := ExecuteRequest(req)
+	sdrm := &models.SignleDataResponseModel{}
+	errUnmarshal := json.Unmarshal([]byte(response.Body.Bytes()), sdrm)
 
 	require.Equal(t, http.StatusOK, response.Code)
-
-	sdrm := &models.SignleDataResponseModel{}
-	err := json.Unmarshal([]byte(response.Body.Bytes()), sdrm)
-
-	require.NoError(t, err)
-	require.Equal(t, originalSdrm.Data.ID, sdrm.Data.ID)
-	require.NotEqual(t, originalSdrm.Data.WhatTodo, sdrm.Data.WhatTodo)
+	require.NoError(t, errRequest)
+	require.NoError(t, errUnmarshal)
+	require.NotEmpty(t, sdrm.Data)
+	require.Equal(t, randomTodo.Data.ID, sdrm.Data.ID)
+	require.NotEqual(t, randomTodo.Data.WhatTodo, sdrm.Data.WhatTodo)
+	require.Equal(t, randomTodo.Data.CreatedAt, sdrm.Data.CreatedAt)
 
 }
 
 func TestDeleteTodo(t *testing.T) {
 	DeleteAndRestartTable()
-	randomTodo, _, _, _ := createRandomTodo(t)
+	randomTodo, responseCode, _ := createRandomTodo(t)
+	require.Equal(t, http.StatusCreated, responseCode)
 
-	req, _ := http.NewRequest("GET", "/api/todos/"+strconv.Itoa(randomTodo.Data.ID), nil)
+	req, errRequest := http.NewRequest("DELETE", "/api/todos/"+strconv.Itoa(randomTodo.Data.ID), nil)
 	response := ExecuteRequest(req)
 
+	require.NoError(t, errRequest)
 	require.Equal(t, http.StatusOK, response.Code)
 
-	req, _ = http.NewRequest("DELETE", "/api/todos/"+strconv.Itoa(randomTodo.Data.ID), nil)
+	req, errRequest = http.NewRequest("GET", "/api/todos/"+strconv.Itoa(randomTodo.Data.ID), nil)
 	response = ExecuteRequest(req)
 
-	require.Equal(t, http.StatusOK, response.Code)
-
-	req, _ = http.NewRequest("GET", "/api/todos/"+strconv.Itoa(randomTodo.Data.ID), nil)
-	response = ExecuteRequest(req)
-
+	require.NoError(t, errRequest)
 	require.Equal(t, http.StatusNotFound, response.Code)
 }
